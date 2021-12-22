@@ -1,7 +1,8 @@
 from enum import Enum
 
 from numpy.distutils.fcompiler import none
-
+import itertools
+from itertools import product
 
 class Card(object):
     def __init__(self):
@@ -15,7 +16,7 @@ class Card(object):
             self.p_color = [color]
 
     def negative_hint(self, value=-1, color=""):
-        # removes color and values from cards that did not recieve a certain hint
+        # removes color and values from cards that did not receive a certain hint
         if value != -1:
             self.p_value = filter(lambda n: n != value, self.p_value)
         if color != "":
@@ -30,35 +31,66 @@ class Player(object):
 
     def give_card(self, card):
         self.hand.push(card)
+        carta = Card
+        self.personal_hand.push(carta)
 
     def remove_card(self, position):
         del self.hand[position]
+        del self.personal_hand[position]
 
     def give_card_last(self, card):
         self.hand.append(card)
+        carta = Card
+        self.personal_hand.append(carta)
 
 
 class Board(object):
+    #TODO insert a way to keep track of previous status like what are the last moves each player made
+    #maybe implement an ordered list of boards and each time a move is made add the new board to the list
+    #considering the last one as the current live one?
     def __init__(self):
         players = []
         fireworks = [-1, -1, -1, -1, -1]
         discard_pile = []
         hand = []
-        for _ in range(1,5):
-            hand.add(Card)
+        blue_tokens = 8
+        red_tokens = 0
+        deck = []
+        for _ in range(1, 5):
+            carta = Card
+            hand.add(carta)
+        for color,value in product(["red","yellow","green","blue", "white"], [1,1,1,2,2,3,3,4,4,5]):
+            carta = Card
+            carta.hint(value= value, color = color)
+            deck.push(carta)
 
     def set_firework(self, color, value):
         match color:
             case "red":
-                self.fireworks[0] = value
+                if self.fireworks[0] + 1 == value:
+                    self.fireworks[0] = value
+                else:
+                    self.red_tokens += 1
             case "yellow":
-                self.fireworks[1] = value
+                if self.fireworks[1] + 1 == value:
+                    self.fireworks[1] = value
+                else:
+                    self.red_tokens += 1
             case "green":
-                self.fireworks[2] = value
+                if self.fireworks[2] + 1 == value:
+                    self.fireworks[2] = value
+                else:
+                    self.red_tokens += 1
             case "blue":
-                self.fireworks[3] = value
+                if self.fireworks[3] + 1 == value:
+                    self.fireworks[3] = value
+                else:
+                    self.red_tokens += 1
             case "white":
-                self.fireworks[4] = value
+                if self.fireworks[4] + 1 == value:
+                    self.fireworks[4] = value
+                else:
+                    self.red_tokens += 1
 
     def add_player(self, name):
         player = Player(name)
@@ -71,12 +103,62 @@ class Board(object):
         card = Card()
         card.hint(value, color)
         player.give_card(card)
+        for index in self.deck.size():
+            if self.deck[index].p_color[0] == color and self.deck[index].p_value == value:
+                del self.deck[index]
+                break
 
-    def player_palys_card(self, name, id):
+    def player_plays_card(self, name, id):
         for player in self.players:
             if player.name == name:
                 break
+        self.set_firework(player.hand[id].color[0], player.hand[id].value[0])
+        self.discard_pile.push(player.hand[id])
+        #una carta giocata entra nella discard pile in quanto non è più disponibile? si può rimuovere se è ridondante
         player.remove_card(id)
+
+    def player_discards_card(self, name, id):
+        for player in self.players:
+            if player.name == name:
+                break
+        self.discard_pile.push(player.hand[id])
+        player.remove_card(id)
+        if self.blue_tokens < 8:
+            self.blue_tokens += 1
+
+    def play_card(self,  id):
+        #TODO chiamare set_fireworks dopo aver scoperto effettivamente il colore e il valore della carta
+        #TODO aggiungere la carta alla discard pile
+        del self.hand[id]
+
+    def player_discards_card(self,  id):
+        # TODO aggiungere la carta alla discard pile
+        del self.hand[id]
+        if self.blue_tokens < 8:
+            self.blue_tokens += 1
+
+    def give_hint(self, ids, value=-1, color=-1):
+        if self.blue_tokens <= 0:
+            return -1
+        for i in range(self.hand.size()):
+            if ids.contains(i):
+                self.hand[id].hint(value, color)
+            else:
+                self.hand[id].negative_hint(value, color)
+        self.blue_tokens -= 1
+
+    def give_hint_to_player(self, name, value=-1, color=-1):
+        if self.blue_tokens <= 0:
+            return -1
+        for player in self.players:
+            if player.name == name:
+                break
+        for i in range(player.hand.size()):
+            if player.hand[i].value == value or player.hand[i].value == value:
+                player.personal_hand[i].hint(value, color)
+            else:
+                player.personal_hand[i].hint(value, color)
+        self.blue_tokens -= 1
 
     def print_board(self):
         for player in self.players:
@@ -87,84 +169,3 @@ class Board(object):
                 print(card.p_color)
                 print(card.p_value)
             i += 1
-    def give_hint(self, ids, value = -1 , color = -1):
-        for i in range(self.hand.size()):
-            if ids.contains(i):
-                self.hand[id].hint(value,color)
-            else:
-                self.hand[id].negative_hint(value, color)
-
-    def give_hint_to_player(self, name, value = -1, color  = -1):
-        for player in self.players:
-            if player.name == name:
-                break
-        for i in range(player.hand.size()):
-            if player.hand[i].value == value or player.hand[i].value == value:
-                player.personal_hand[i].hint(value,color)
-            else:
-                player.personal_hand[i].hint(value, color)
-
-def state_deserializer(state):
-    lines = state.split("\n")
-    board = Board()
-    players = []
-    current_player = lines[0].split(":")[1]
-    status = ""
-    for line in lines[2:]:
-        if line.split(" ") == "Player":
-            player = Player(line[1])
-            players.push(player)
-        if line.split(" ") == "Card":
-            card = Card()
-            for info in line.split(" "):
-                if info.split(": ")[0] == "value":
-                    card.hint(value=int(info.split(": ")[1].toInt))
-                if info.split(": ")[0] == "color":
-                    card.hint(color=int(info.split(": ")[1].toInt))
-            if status == "":
-                players[0].give_card_last(card)
-            else:
-                if status != "Discard pile":
-                    board.set_firework(card.p_color[0], card.p_value[0])
-        else:
-            if line.split(":")[0] == ("red" or "yellow" or "green" or "blue" or "white" or "Discard pile"):
-                status = line.split(":")[0]
-    # implemented up to detection of discard pile, still waiting for correct api on show
-
-# exaple of show function
-# Current player: Test
-# Player hands:
-# Player Test2 {
-#	cards: [
-#		Card 35; value: 4; color: red
-#		Card 5; value: 1; color: red
-#		Card 30; value: 3; color: red
-#		Card 26; value: 3; color: yellow
-#		Card 31; value: 3; color: yellow
-#	 ];
-#	score: 0
-# }
-# Player Test3 {
-#	cards: [
-#		Card 44; value: 4; color: white
-#		Card 25; value: 3; color: red
-#		Card 41; value: 4; color: yellow
-#		Card 39; value: 4; color: white
-#		Card 29; value: 3; color: white
-#	 ];
-#	score: 0
-# }
-# Table cards:
-# red: [
-# ]
-# yellow: [
-# ]
-# green: [
-# ]
-# blue: [
-# ]
-# white: [
-# ]
-# Discard pile:
-# Note tokens used: 0/8
-# Storm tokens used: 0/3
