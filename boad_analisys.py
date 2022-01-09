@@ -16,6 +16,7 @@ class Card(object):
     possible_card = []
     color = -1  # -1 = unknown
     value = 1  # -1 = unknown
+    age=0 # expresses how old a card is, the lower the yunger
 
     def __init__(self):
         self.possible_card = [[True, True, True, True, True],
@@ -58,9 +59,15 @@ class Player(object):
         self.name = name
 
     def give_card(self, card):
+        for cards in self.hand:
+            cards.age+=1
         self.hand.push(card)
         carta = Card
+        for cards in self.personal_hand:
+            cards.age+=1
         self.personal_hand.push(carta)
+
+
 
     def remove_card(self, position):
         del self.hand[position]
@@ -95,32 +102,11 @@ class Board(object):
             self.deck.push(carta)
 
     def set_firework(self, color, value):
-        match color:
-            case "red":
-                if self.fireworks[RED] + 1 == value:
-                    self.fireworks[RED] = value
-                else:
-                    self.red_tokens += 1
-            case "yellow":
-                if self.fireworks[YELLOW] + 1 == value:
-                    self.fireworks[YELLOW] = value
-                else:
-                    self.red_tokens += 1
-            case "green":
-                if self.fireworks[GREEN] + 1 == value:
-                    self.fireworks[GREEN] = value
-                else:
-                    self.red_tokens += 1
-            case "blue":
-                if self.fireworks[BLUE] + 1 == value:
-                    self.fireworks[BLUE] = value
-                else:
-                    self.red_tokens += 1
-            case "white":
-                if self.fireworks[WHITE] + 1 == value:
-                    self.fireworks[WHITE] = value
-                else:
-                    self.red_tokens += 1
+            if self.fireworks[color] + 1 == value:
+                self.fireworks[color] = value
+            else:
+                self.red_tokens += 1
+
 
     def add_player(self, name):
         player = Player(name)
@@ -262,3 +248,54 @@ class Board(object):
             if self.cardsRemainingOutsideDiscard(card.value,
                                                  card.color) == 1: return True  # the card is the last of it's kind
         return not self.isWorthless(card)
+
+    def findNewestPlayable(self):
+        # finds the newest playable card, if tied chooses the one with the smallest value
+        best_card = none
+        best_player = none
+
+        for player in self.players:
+            for card in player.hand:
+                if self.isPlayable(card) == 1:
+                    if best_card == none or card.age<best_card.age or (card.age==best_card.age and card.value<best_card.value):
+                        best_card = card
+                        best_player = player
+        return player,card
+
+    def findBestHint(self,player,index):
+        # retun value: 1 for color, -1 for value, 0 for none
+        if player.personal_hand[index].color!=-1:
+            return "value"
+        if player.personal_hand[index].value!=-1:
+            return "color"
+        # if the card is a 5 you might want to warn the player
+        if player.hand[index].value == 5: return "value"
+        cnt = 0
+        for i in range(player.hand.size()):
+            if i == index: continue
+            if player.hand[i].value == player.hand[index].value and player.personal_hand[i].value==-1:
+                cnt += 1
+        # if no other card have the same value the hint is good as it cannot be miss interpreted
+        # cards with already a known value don't count
+        if cnt == 0: return "value"
+        cnt = 0
+        for i in range(player.hand.size()):
+            if i == index: continue
+            if player.hand[i].color == player.hand[index].color and player.personal_hand[i].color==-1:
+                cnt += 1
+        if cnt == 0: return "color"
+        cnt = 0
+        for i in range(index):
+            if player.hand[i].value == player.hand[index].value and player.personal_hand[i].value == -1:
+                cnt += 1
+        # as a last attempt, if the card is the newest one of it's kind hint that
+        if cnt == 0:
+            return "value"
+        cnt = 0
+        for i in range(index):
+            if player.hand[i].color == player.hand[index].color and player.personal_hand[i].color == -1:
+                cnt += 1
+        if cnt == 0:
+            return "color"
+        # if all else fail ---> return value
+        return "value"
