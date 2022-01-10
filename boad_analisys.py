@@ -267,12 +267,12 @@ class Board(object):
         best_player = none
 
         for player in self.players:
-            for card in player.hand:
-                if self.isPlayable(card) == 1:
-                    if best_card == none or card.age<best_card.age or (card.age==best_card.age and card.value<best_card.value):
-                        best_card = card
+            for index in player.hand.size:
+                if self.isPlayable(player.hand[index]) == 1:
+                    if best_card == none or player.hand[index].age<best_card.age or (player.hand[index].age==best_card.age and player.hand[index].value<best_card.value):
+                        best_card = player.hand[index]
                         best_player = player
-        return player,card
+        return player,index
 
     def findBestHint(self,player,index):
         # retun value: 1 for color, -1 for value, 0 for none
@@ -328,19 +328,57 @@ class Board(object):
                 card = player.hand[index]
         if self.isPlayable(card): return False
 
-    def findBestDiscard(self):
+    def findBestDiscard(self, hand):
         if self.blue_tokens == 8: return none
-        for index in range(len(self.hand)):
+        for index in range(len(hand)):
             # if a card is worthless you can discard it
-            if self.isWorthless(self.hand[index]): return index
+            if self.isWorthless(hand[index]): return index
         val =0
-        for index in range(len(self.hand)):
-            if val == 0 or (self.hand[index].age >self.hand[val].age and self.hand[index].color ==-1 and self.hand[index].value==-1):
+        for index in range(len(hand)):
+            if val == 0 or (hand[index].age >hand[val].age and hand[index].color ==-1 and hand[index].value==-1):
                 val = index
         # discard the oldest unknown card
         if val != 0: return val
-        for index in range(len(self.hand)):
-            if val == 0 or (self.hand[index].age >self.hand[val].age and self.isValuable(self.hand[index])<1):
+        for index in range(len(hand)):
+            if val == 0 or (hand[index].age >hand[val].age and self.isValuable(hand[index])<1):
                 val = index
         # if the oldest unknow card is the newst one, discard the oldest one that isn't absolutely valuable
         return val
+
+    def findValuableWarning(self, player):
+        # TODO implement warning based on who's next to play
+        if self.blue_tokens!=0:
+            val  = self.findBestDiscard(player.personal_hand)
+            if self.isValuable(player.hand[val]):
+                # if the next discard (based on our strategy) is a valuable card, warn them
+                return val
+            # otherwise no need to warn them
+        return -1
+
+    def makeAMove(self):
+        if len(self.deck)== 0:
+            # play best card
+            # if no secure card, play the "most playable"
+            return
+        if self.findValuableWarning(self.players[0])!=-1 :
+            # hint them
+            return
+        # play best card
+        # give hint
+        # TODO implement way of choosing a different hint if the best one is misleading with a cicle
+        player, index = self.findNewestPlayable()
+        type = self.findBestHint(player, index)
+        if type == "color":
+            if not self.isHintMisleading(player,color = player.hand[index].color):
+                # give hint
+                return
+        else:
+            if not self.isHintMisleading(player, value=player.hand[index].value):
+                # give hint
+                return
+        if self.blue_tokens<8:
+            val = self.findBestDiscard(self.hand)
+            if val!=-1:
+                # discard it
+                return
+        # TODO gestire casi limite scartando la carta meno peggio
