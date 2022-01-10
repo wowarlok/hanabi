@@ -17,6 +17,9 @@ class Card(object):
     color = -1  # -1 = unknown
     value = 1  # -1 = unknown
     age=0 # expresses how old a card is, the lower the yunger
+    playable = -1
+    valuable = -1
+    worthless = -1
 
     def __init__(self):
         self.possible_card = [[True, True, True, True, True],
@@ -194,6 +197,7 @@ class Board(object):
                 if not card.possible_card[val][col]: continue
                 total_count += 1
                 if val == self.fireworks[val] + 1: playable_count += 1;
+        if playable_count==total_count: card.playable = 1
         return playable_count / total_count  # if return =1 card can be played 100% of the time, otherwise function retunrs
 
     # a probability of playability. if 0 card will never be usefull
@@ -239,6 +243,7 @@ class Board(object):
                 carta = Card()
                 carta.hint(val, col)
                 if self.isWorthless(carta): playable_count += 1;
+        if playable_count == total_count: card.worthless = 1
         return playable_count / total_count  # if return =1 card can be played 100% of the time, otherwise function retunrs
 
     # a probability of playability. if 0 card will never be usefull
@@ -246,8 +251,15 @@ class Board(object):
     def isValuable(self, card):
         if card.value != -1 and card.color != -1:
             if self.cardsRemainingOutsideDiscard(card.value,
-                                                 card.color) == 1: return True  # the card is the last of it's kind
-        return not self.isWorthless(card)
+                                                 card.color) == 1:
+                card.valuable = 1
+                return True  # the card is the last of it's kind
+        if not self.isWorthless(card):
+            card.valuable = 1
+            return True
+        else:
+            card.worthless = 1
+            return False
 
     def findNewestPlayable(self):
         # finds the newest playable card, if tied chooses the one with the smallest value
@@ -299,3 +311,36 @@ class Board(object):
             return "color"
         # if all else fail ---> return value
         return "value"
+
+    def isHintMisleading(self, player, value=-2, color=-2):
+        indexes = []
+        for index in range(player.hand.size):
+            if player.hand[index].value == value or player.hand[index].color == color:
+                if  player.personal_hand[index].value != value and player.personal_hand[index].color != color:
+                    # count how many cards will recieve information with this hint
+                    indexes.append(index)
+        if len(indexes)== 0: return True
+        if len(indexes) == 1 and  self.isPlayable(player.hand[indexes[0]]): return False
+        # if the hint identifies a single card and it can be played, it's not misleading
+        card = none
+        for index in indexes:
+            if card == none or card.age>player.hand[index]:
+                card = player.hand[index]
+        if self.isPlayable(card): return False
+
+    def findBestDiscard(self):
+        if self.blue_tokens == 8: return none
+        for index in range(len(self.hand)):
+            # if a card is worthless you can discard it
+            if self.isWorthless(self.hand[index]): return index
+        val =0
+        for index in range(len(self.hand)):
+            if val == 0 or (self.hand[index].age >self.hand[val].age and self.hand[index].color ==-1 and self.hand[index].value==-1):
+                val = index
+        # discard the oldest unknown card
+        if val != 0: return val
+        for index in range(len(self.hand)):
+            if val == 0 or (self.hand[index].age >self.hand[val].age and self.isValuable(self.hand[index])<1):
+                val = index
+        # if the oldest unknow card is the newst one, discard the oldest one that isn't absolutely valuable
+        return val
