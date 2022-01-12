@@ -136,6 +136,7 @@ class Board(object):
     deck = []
     current_player_name = ""
     my_name = ""
+    my_position =-1# is the index of the player thta comes right after us
 
     def __init__(self):
         temp = []
@@ -155,6 +156,9 @@ class Board(object):
             self.red_tokens += 1
 
     def add_player(self, name):
+        if name == self.my_name:
+            self.my_position = len(self.players)
+            return
         player = Player(name)
         self.players.append(player)
         if len(self.players) >= 3:
@@ -178,7 +182,7 @@ class Board(object):
             if player.name == name:
                 break
         self.set_firework(player.hand[id].getColor(), player.hand[id].getValue())
-        self.discard_pile.push(player.hand[id])
+        self.discard_pile.append(player.hand[id])
         # una carta giocata entra nella discard pile in quanto non è più disponibile? si può rimuovere se è ridondante
         player.remove_card(id)
 
@@ -186,13 +190,16 @@ class Board(object):
         for player in self.players:
             if player.name == name:
                 break
-        self.discard_pile.push(player.hand[id])
+        self.discard_pile.append(player.hand[id])
         player.remove_card(id)
         if self.blue_tokens < 8:
             self.blue_tokens += 1
 
     def play_card(self, id):
         del self.hand[id]
+        card = Card()
+        if len(self.deck)-len(self.hand)>0:
+            self.hand.append(card)
 
     def discards_card(self, id, value, color):
         del self.hand[id]
@@ -201,6 +208,8 @@ class Board(object):
         card = Card()
         card.hint(value, color)
         self.discard_pile.append(card)
+        if len(self.deck)-len(self.hand)>0:
+            self.hand.append(card)
 
     def give_hint(self, ids, value=-1, color=-1):
         if self.blue_tokens <= 0:
@@ -248,6 +257,7 @@ class Board(object):
                 if val == self.fireworks[col]:
                     playable_count += 1;
         if playable_count == total_count: card.playable = 1
+        if total_count == 0: return 0 #this should be possible, but sometimes it happens, will fix
         return playable_count / total_count  # if return =1 card can be played 100% of the time, otherwise function retunrs
 
     # a probability of playability. if 0 card will never be usefull
@@ -323,16 +333,17 @@ class Board(object):
         # finds the newest playable card, if tied chooses the one with the smallest value
         best_card = none
         best_player = none
-
+        best_index =none
         for player in self.players:
-            for index in player.hand.size:
+            for index in range(len(player.hand)):
                 if self.isPlayable(player.hand[index]) == 1:
-                    if best_card == none or player.hand[index].getAge < best_card.age or (
-                            player.hand[index].getAge == best_card.age and player.hand[
+                    if best_card == none or player.hand[index].getAge() < best_card.age or (
+                            player.hand[index].getAge() == best_card.age and player.hand[
                         index].getValue() < best_card.value):
                         best_card = player.hand[index]
                         best_player = player
-        return player, index
+                        best_index = index
+        return best_player, best_index
 
     def findBestHint(self, player, index):
         # retun value: 1 for color, -1 for value, 0 for none
@@ -343,7 +354,7 @@ class Board(object):
         # if the card is a 5 you might want to warn the player
         if player.hand[index].getValue() == 5: return "value"
         cnt = 0
-        for i in range(player.hand.size()):
+        for i in range(len(player.hand)):
             if i == index: continue
             if player.hand[i].getValue() == player.hand[index].getValue() and player.personal_hand[i].getValue() == -1:
                 cnt += 1
@@ -351,7 +362,7 @@ class Board(object):
         # cards with already a known value don't count
         if cnt == 0: return "value"
         cnt = 0
-        for i in range(player.hand.size()):
+        for i in range(len(player.hand)):
             if i == index: continue
             if player.hand[i].color == player.hand[index].color and player.personal_hand[i].color == -1:
                 cnt += 1
@@ -374,9 +385,9 @@ class Board(object):
 
     def isHintMisleading(self, player, value=-2, color=-2):
         indexes = []
-        for index in range(player.hand.size):
+        for index in range(len(player.hand)):
             if player.hand[index].getValue() == value or player.hand[index].getColor() == color:
-                if player.personal_hand[index].getvalue() != value and player.personal_hand[index].getColor() != color:
+                if player.personal_hand[index].getValue() != value and player.personal_hand[index].getColor() != color:
                     # count how many cards will receive information with this hint
                     indexes.append(index)
         if len(indexes) == 0: return True
@@ -384,7 +395,7 @@ class Board(object):
         # if the hint identifies a single card and it can be played, it's not misleading
         card = none
         for index in indexes:
-            if card == none or card.age > player.hand[index]:
+            if card == none or card.age > player.hand[index].age:
                 card = player.hand[index]
         if self.isPlayable(card): return False
 
@@ -565,7 +576,9 @@ class Board(object):
                 color = WHITE
             if type(data) is GameData.ServerActionValid:
                 self.discards_card(data.cardHandIndex, data.card.value, color)
+                # TODO remove card from deck
             if type(data) is GameData.ServerPlayerMoveOk or type(data) is GameData.ServerPlayerThunderStrike:
+                # TODO remove card from deck
                 self.play_card(data.cardHandIndex)
                 self.set_firework(color, data.card.value)
         else:
@@ -583,31 +596,38 @@ class Board(object):
             # play best card
             # if no secure card, play the "most playable"
             # return
-        if self.findValuableWarning(self.players[0]) != -1:  # TODO not player 0 but next player
+        if self.findValuableWarning(self.players[self.my_position%len(self.players)]) != -1:  # TODO not player 0 but next player
             # hint them
             val = self.findBestDiscard(self.players[0].hand)
-            return "hint", self.players[0].hand[val].getValue(), self.players[0].name, "value"
+            return "hint", self.players[self.my_position%len(self.players)].hand[val].getValue(), self.players[0].name, "value"
         # play best card
         for i in range(len(self.hand)):
             if self.isPlayable(self.hand[i])==1:
-                return "play", i, none, none
+                return "play", i,None, None
         # give hint
         # TODO implement way of choosing a different hint if the best one is misleading with a cicle
         player, index = self.findNewestPlayable()
-        type = self.findBestHint(player, index)
+        if player != none and index != none:
+            type = self.findBestHint(player, index)
+        else:
+            type = ""
         if type == "color":
             if not self.isHintMisleading(player, color=player.hand[index].getColor()):
                 # give hint
+                print("hint "+ str(player.hand[index].getColor())+" " +player.name+ " color")
                 return "hint", player.hand[index].getColor(), player.name, "color"
         else:
-            if not self.isHintMisleading(player, value=player.hand[index].getValue()):
-                # give hint
-                return "value", player.hand[index].getValue(), player.name, "value"
+            if type =="value":
+                if not self.isHintMisleading(player, value=player.hand[index].getValue()):
+                    # give hint
+                    print("hint " + str(player.hand[index].getValue()) + " " + player.name + " value")
+                    return "hint", player.hand[index].getValue(), player.name, "value"
         if self.blue_tokens < 8:
             val = self.findBestDiscard(self.hand)
             if val != -1:
                 # discard it
-                return "discard", val, none, none
+                return "discard", val, None, None
         # ipotetico caso limite da gestire
-        return "play", len(self.hand)-1
+        print("hint " + str(self.players[self.my_position%len(self.players)].hand[0].getValue()) + " " + self.players[0].name + " value")
+        return "hint",self.players[self.my_position%len(self.players)].hand[0].getValue(), self.players[0].name, "value"
         # TODO gestire casi limite scartando la carta meno peggio

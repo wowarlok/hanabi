@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-
+import time
+from copy import copy
 from sys import argv, stdout
 from threading import Thread
+
+from numpy.distutils.fcompiler import none
+
 import GameData
 import socket
 from constants import *
@@ -27,7 +31,7 @@ else:
 
 
 run = True
-
+ai= False# set to false to visualize the "show" command
 statuses = ["Lobby", "Game", "GameHint"]
 
 status = statuses[0]
@@ -111,9 +115,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         if not data:
             continue
         data = GameData.GameData.deserialize(data)
+        data2 = copy(data)
         if type(data) is GameData.ServerPlayerMoveOk:
             dataOk = True
-            board.hanldeMove(data)
+            board.hanldeMove(data2)
             s.send(GameData.ClientGetGameStateRequest(playerName).serialize())
             print("Nice move!")
             print("Current player: " + data.player)
@@ -126,15 +131,17 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             dataOk = True
             print("Game start!")
             s.send(GameData.ClientPlayerReadyData(playerName).serialize())
-            s.send(GameData.ClientGetGameStateRequest(playerName).serialize())
             status = statuses[1]
+            time.sleep(1)
+            s.send(GameData.ClientGetGameStateRequest(playerName).serialize())
         if type(data) is GameData.ServerGameStateData:
             dataOk = True
-
-            print("Current player: " + data.currentPlayer)
+            if not ai:
+                print("Current player: " + data.currentPlayer)
             if not board_setup:
                 board.current_player_name = data.currentPlayer
-            print("Player hands: ")
+            if not ai:
+                print("Player hands: ")
             for p in data.players:
                 if not board_setup:
                     board.add_player(p.name)
@@ -150,29 +157,37 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                         if card.color == "white":
                             color = WHITE
                         board.give_card_to_player(p.name,card.value, color)
-                print(p)
-                print(p.toClientString())
-            print("Table cards: ")
+                if not ai:
+                    print(p)
+                    print(p.toClientString())
+            if not ai:
+                print("Table cards: ")
             for pos in data.tableCards:
-                print(pos + ": [ ")
+                if not ai:
+                    print(pos + ": [ ")
                 for c in data.tableCards[pos]:
-                    print(c.toClientString() + " ")
-                print("]")
-            print("Discard pile: ")
+                    if not ai:
+                        print(c.toClientString() + " ")
+                if not ai:
+                    print("]")
+            if not ai:
+                print("Discard pile: ")
             for c in data.discardPile:
-                print("\t" + c.toClientString())
-            print("Note tokens used: " + str(data.usedNoteTokens) + "/8")
-            print("Storm tokens used: " + str(data.usedStormTokens) + "/3")
+                if not ai:
+                    print("\t" + c.toClientString())
+            if not ai:
+                print("Note tokens used: " + str(data.usedNoteTokens) + "/8")
+                print("Storm tokens used: " + str(data.usedStormTokens) + "/3")
 
             board_setup = True
-            if playerName == data.currentPlayer:
-                action,val,player, type = board.makeMove()
+            if playerName == data2.currentPlayer:
+                action,val,playerToSend, typeToSend = board.makeMove()
                 if action == "discard":
                     s.send(GameData.ClientPlayerDiscardCardRequest(playerName, val).serialize())
                 if action == "play":
                     s.send(GameData.ClientPlayerPlayCardRequest(playerName, val).serialize())
                 if action == "hint":
-                    if type =="color":
+                    if typeToSend =="color":
                         if val == RED:
                             val ="red"
                         if val == BLUE:
@@ -183,24 +198,25 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                             val ="green"
                         if val == WHITE:
                             val ="white"
-                    s.send(GameData.ClientHintData(playerName, player, type, val).serialize())
-
-        elif type(data) is GameData.ServerActionInvalid:
+                    s.send(GameData.ClientHintData(playerName, playerToSend,typeToSend, val).serialize())
+            stdout.flush()
+            time.sleep(2)
+        if type(data2) is GameData.ServerActionInvalid:
             dataOk = True
             print("Invalid action performed. Reason:")
             print(data.message)
-        elif type(data) is GameData.ServerActionValid:
+        if type(data) is GameData.ServerActionValid:
             dataOk = True
             board.hanldeMove(data)
             s.send(GameData.ClientGetGameStateRequest(playerName).serialize())
             print("Action valid!")
             print("Current player: " + data.player)
-        elif type(data) is GameData.ServerPlayerThunderStrike:
+        if type(data) is GameData.ServerPlayerThunderStrike:
             dataOk = True
             board.hanldeMove(data)
             s.send(GameData.ClientGetGameStateRequest(playerName).serialize())
             print("OH NO! The Gods are unhappy with you!")
-        elif type(data) is GameData.ServerHintData:
+        if type(data) is GameData.ServerHintData:
             dataOk = True
             board.hanldeMove(data)
             print("Hint type: " + data.type)
@@ -208,20 +224,21 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             for i in data.positions:
                 print("\t" + str(i))
             s.send(GameData.ClientGetGameStateRequest(playerName).serialize())
-        elif type(data) is GameData.ServerInvalidDataReceived:
+        if type(data) is GameData.ServerInvalidDataReceived:
             dataOk = True
             print(data.data)
-        elif type(data) is GameData.ServerGameOver:
+        if type(data) is GameData.ServerGameOver:
             dataOk = True
             print(data.message)
             print(data.score)
             print(data.scoreMessage)
             stdout.flush()
-            run = False
-        elif not dataOk:
+            print("Ready for a new game!")
+        if not dataOk:
             print("Unknown or unimplemented data type: " +  str(type(data)))
         print("[" + playerName + " - " + status + "]: ", end="")
         stdout.flush()
+        data = none
 
 
 #s.send(GameData.ClientPlayerStartRequest(playerName).serialize())
