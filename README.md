@@ -31,7 +31,7 @@ Commands for server:
 To start the server:
 
 ```bash
-python client.py <IP> <port> <PlayerName>
+python client1.py <IP> <port> <PlayerName>
 ```
 
 Arguments:
