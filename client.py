@@ -21,7 +21,7 @@ WHITE = 4
 if len(argv) < 4:
     print("You need the player name to start the game.")
     #exit(-1)
-    playerName = "Test" # For debug
+    playerName = "Alice" # For debug
     ip = HOST
     port = PORT
 else:
@@ -200,6 +200,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             board_setup = True
             board.current_player_name = data.currentPlayer
             if playerName == data2.currentPlayer:
+                time.sleep(0.1)
                 action,val,playerToSend, typeToSend = board.makeMove()
                 if action == "discard":
                     s.send(GameData.ClientPlayerDiscardCardRequest(playerName, val).serialize())

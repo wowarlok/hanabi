@@ -100,14 +100,7 @@ class Player(object):
         self.personal_hand = []
         self.name = name
 
-    def give_card(self, card):
-        for cards in self.hand:
-            cards.age += 1
-        self.hand.push(card)
-        carta = Card
-        for cards in self.personal_hand:
-            cards.age += 1
-        self.personal_hand.push(carta)
+
 
     def remove_card(self, position):
         del self.hand[position]
@@ -197,6 +190,8 @@ class Board(object):
 
     def play_card(self, id):
         del self.hand[id]
+        for card in self.hand:
+            card.increaceAge()
         card = Card()
         if len(self.deck) - len(self.hand) > 0:
             self.hand.append(card)
@@ -205,34 +200,16 @@ class Board(object):
         del self.hand[id]
         if self.blue_tokens < 8:
             self.blue_tokens += 1
+        for card in self.hand:
+            card.increaceAge()
+        card = Card()
+        if len(self.deck) - len(self.hand) > 0:
+            self.hand.append(card)
         card = Card()
         card.hint(value, color)
         self.discard_pile.append(card)
-        if len(self.deck) - len(self.hand) > 0:
-            self.hand.append(card)
 
-    def give_hint(self, ids, value=-1, color=-1):
-        if self.blue_tokens <= 0:
-            return -1
-        for i in range(self.hand.size()):
-            if ids.contains(i):
-                self.hand[id].hint(value, color)
-            else:
-                self.hand[id].negative_hint(value, color)
-        self.blue_tokens -= 1
 
-    def give_hint_to_player(self, name, value=-1, color=-1):
-        if self.blue_tokens <= 0:
-            return -1
-        for player in self.players:
-            if player.name == name:
-                break
-        for i in range(player.hand.size()):
-            if player.hand[i].getValue() == value or player.hand[i].getColor() == color:
-                player.personal_hand[i].hint(value, color)
-            else:
-                player.personal_hand[i].hint(value, color)
-        self.blue_tokens -= 1
 
     def print_board(self):
         for player in self.players:
@@ -336,7 +313,8 @@ class Board(object):
         best_card = None
         best_player = None
         best_index = None
-        for player in self.players:
+        for playerIndex in range(len(self.players)):
+            player = self.players[(playerIndex+self.my_position)%len(self.players)]
             for index in range(len(player.hand)):
                 if self.isPlayable(player.hand[index]) == 1:
                     if best_card == None or player.hand[index].getAge() < best_card.getAge() or (
@@ -354,6 +332,8 @@ class Board(object):
                             best_card = player.hand[index]
                             best_player = player
                             best_index = index
+            if best_player!=None:
+                break
         return best_player, best_index
 
     def findBestHint(self, player, index):
@@ -416,19 +396,18 @@ class Board(object):
         return True
 
     def findBestDiscard(self, hand):
-        if self.blue_tokens == 8: return None
         for index in range(len(hand)):
             # if a card is worthless you can discard it
             if self.isWorthless(hand[index]): return index
         val = -1
         for index in range(len(hand)):
-            if val == -1 or (hand[index].getAge() > hand[val].getAge() and hand[index].getColor() == -1 and hand[
-                index].getValue() == -1):
+            if (val == -1 or hand[index].getAge() > hand[val].getAge()) and hand[index].getColor() == -1 and hand[
+                index].getValue() == -1:
                 val = index
         # discard the oldest unknown card
-        if val != -1: return val
+        if val != -1 and val!=len(hand)-1: return val
         for index in range(len(hand)):
-            if val == -1 or (hand[index].getAge > hand[val].getAge and self.isValuable(hand[index]) < 1):
+            if val == -1 or (hand[index].getAge() > hand[val].getAge() and self.isValuable(hand[index]) < 1):
                 val = index
         # if the oldest unknow card is the newst one, discard the oldest one that isn't absolutely valuable
         return val
@@ -436,7 +415,7 @@ class Board(object):
     def findValuableWarning(self, player):
         if self.blue_tokens != 0:
             val = self.findBestDiscard(player.personal_hand)
-            if val != None and self.isValuable(player.hand[val]) and player.personal_hand[val].getValuable()<1:
+            if val != None and val!= -1 and self.isValuable(player.hand[val]) and player.personal_hand[val].getValuable()<1:
                 # if the next discard (based on our strategy) is a valuable card, warn them
                 return val
             # otherwise no need to warn them
@@ -451,14 +430,18 @@ class Board(object):
             hand = toPlayer.personal_hand
         foundPlayableCard = False
         foundIndex = -1
-        for index in range(len(hand)):
+        for index in range(len(hand)-1,-1,-1):
             oldStatus = self.isPlayable(hand[index])
             if index in indexes:
                 hand[index].hint(color=color)
-                if oldStatus < 1 and oldStatus > 0:
+                if oldStatus <= 1 and oldStatus > 0:
                     # the card was maybe playable, but not certain
                     if self.isPlayable(hand[index]) == 1:
                         # we found a card that is now playable, the hint must have been about this card
+                        if not foundPlayableCard:
+                            # the newest card found playable is considered playable, the others might be the same or not playable in the future
+                            hand[index].setPlayable(1)
+                            print("set card playable: " + str(index))
                         foundPlayableCard = True
                     else:
                         if self.isPlayable(hand[index]) > 0:
@@ -467,13 +450,11 @@ class Board(object):
                                 foundIndex = index
             else:
                 hand[index].negative_hint(color=color)
-                if oldStatus < 1 and oldStatus > 0:
-                    # if the card was maybe playable
-                    if self.isPlayable(hand[index])==1:
-                        hand[index].setPlayable(1)
+        print("index identified = " + str(foundIndex))
         if not foundPlayableCard and foundIndex != -1:
             # if no card was found as obvious hint the newest card is set as playable
-            hand[foundIndex].setPlayable(1)
+            print("index identified as playable= " + str(foundIndex))
+            hand[foundIndex].playable=1
 
         # TODO if the player wasn't the one who's supposed to give hind set the next discardable card valuable to false
         # as no valuable hint was given
@@ -495,17 +476,21 @@ class Board(object):
 
         foundPlayableCard = False
         foundIndex = -1
-        for index in range(len(hand)):
+        for index in range(len(hand)-1,-1,-1):
             oldStatus = self.isPlayable(hand[index])
             if index in indexes:
                 if value == 5:
                     hand[index].setValuable(1)
                 hand[index].hint(value=value)
-                if oldStatus < 1 and oldStatus > 0:
+                if oldStatus <= 1 and oldStatus > 0:
                     # the card was maybe playable, but not certain
                     if self.isPlayable(hand[index]) == 1:
                         # we found a card that is now playable, the hint must have been about this card
+                        if not foundPlayableCard:
+                            hand[index].setPlayable(1)
+                            print("set card playable: " + str(index))
                         foundPlayableCard = True
+
                     else:
                         if self.isPlayable(hand[index]) > 0:
                             if foundIndex == -1 or hand[index].getAge() < hand[foundIndex].getAge():
@@ -513,13 +498,10 @@ class Board(object):
                                 foundIndex = index
             else:
                 hand[index].negative_hint(value=value)
-                if oldStatus < 1 and oldStatus > 0:
-                    # if the card was maybe playable
-                    if self.isPlayable(hand[index])==1:
-                        hand[index].setPlayable(1)
-
+        print("index identified = "+ str(foundIndex))
         if not warning and not foundPlayableCard and foundIndex != -1:
             # if it wasn't a warning and no card was identified as obvious playable then the newes one is playable
+            print("index identified as playable= " + str(foundIndex))
             hand[foundIndex].setPlayable(1)
 
     def couldBeValuableWithVal(self, tCard, value):
@@ -547,8 +529,22 @@ class Board(object):
                 self.player_discards_card(player.name, index)
         player.give_card_last(data.cards[len(data.cards) - 1])
 
+
+    def findBestPlayable(self):
+        best =None
+        bestIndex = -1
+        for index in range(len(self.hand)):
+            card = self.hand[index]
+            if self.isPlayable(card)==1:
+                if best == None or best.getValue()<card.getValue():
+                    best = card
+                    bestIndex = index
+        return bestIndex
+
     def handleMove(self, data):  # data is status data
         is_me = False
+        player = None
+        toPlayer = None
         if self.current_player_name != self.my_name:
             for player in self.players:
                 if player.name == self.current_player_name:
@@ -616,17 +612,25 @@ class Board(object):
         # play best card
         # if no secure card, play the "most playable"
         # return
+        print("knowledge about my hand: ")
+        for card in self.hand:
+            print("card value: "+ str(card.value))
+            print("card color: "+ str(card.color))
+            print("card playable: "+ str(card.getPlayable()))
+            print("card valuable: "+ str(card.getValuable()))
+            print("card worthless: "+ str(card.getWorthless()))
+            print("")
         if self.findValuableWarning(self.players[self.my_position % len(self.players)]) != -1:
             # hint them
             val = self.findBestDiscard(self.players[self.my_position % len(self.players)].hand)
-            print("hint " + str(self.players[self.my_position % len(self.players)].hand[0].getValue()) + " " +
+            print("hint " + str(self.players[self.my_position % len(self.players)].hand[val].getValue()) + " " +
                   self.players[0].name + " value WARNING")
             return "hint", self.players[self.my_position % len(self.players)].hand[val].getValue(), self.players[
                 self.my_position % len(self.players)].name, "value"
         # play best card
-        for i in range(len(self.hand)):
-            if self.isPlayable(self.hand[i]) == 1:
-                return "play", i, None, None
+        playableCard = self.findBestPlayable()
+        if playableCard!=-1:
+                return "play", playableCard, None, None
         # give hint
         # TODO implement way of choosing a different hint if the best one is misleading with a cicle
         player, index = self.findNewestPlayable()
@@ -650,8 +654,15 @@ class Board(object):
                 # discard it
                 return "discard", val, None, None
         # ipotetico caso limite da gestire
-        print("hint " + str(self.players[self.my_position % len(self.players)].hand[0].getValue()) + " " + self.players[
-            0].name + " value LAST CHANCE")
-        return "hint", self.players[self.my_position % len(self.players)].hand[0].getValue(), self.players[
-            0].name, "value"
+        if self.blue_tokens>0:
+            print("hint " + str(self.players[self.my_position % len(self.players)].hand[0].getValue()) + " " + self.players[
+                0].name + " value LAST CHANCE")
+            return "hint", self.players[self.my_position % len(self.players)].hand[0].getValue(), self.players[
+                0].name, "value"
+        else:
+            emergencyDiscard= 0
+            for index in range(len(self.hand)):
+                if self.hand[index].getValue()>self.hand[emergencyDiscard].getValue():
+                    emergencyDiscard =index
+            return "discard", emergencyDiscard, None, None
         # TODO gestire casi limite scartando la carta meno peggio
