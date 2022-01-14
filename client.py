@@ -223,6 +223,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         if type(data2) is GameData.ServerActionInvalid:
             dataOk = True
             print("Invalid action performed. Reason:")
+            if data.message == "You have no used tokens":
+                board.blue_tokens = 8
+                s.send(GameData.ClientGetGameStateRequest(playerName).serialize())
             print(data.message)
         if type(data) is GameData.ServerActionValid:
             dataOk = True
@@ -256,9 +259,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             print(data.scoreMessage)
             stdout.flush()
             print("Ready for a new game!")
-            board = None
-            board = Board()
-            #s.send(GameData.ClientGetGameStateRequest(playerName).serialize())
+            board .reset()
+            board.my_name = playerName
+            board_setup = False
+            was_hint = True
+            time.sleep(10)
+            s.send(GameData.ClientGetGameStateRequest(playerName).serialize())
         if not dataOk:
             print("Unknown or unimplemented data type: " +  str(type(data)))
         print("[" + playerName + " - " + status + "]: ", end="")

@@ -226,7 +226,7 @@ class Board(object):
         print("Blue tokens = " + str(self.blue_tokens))
 
     def isPlayable(self, card):
-        if card.getPlayable() == 1:
+        if card.getPlayable() == 1 and self.red_tokens<2: #when red tokens =2 enter safe mode
             return 1
         total_count = 0
         playable_count = 0
@@ -665,4 +665,25 @@ class Board(object):
                 if self.hand[index].getValue()>self.hand[emergencyDiscard].getValue():
                     emergencyDiscard =index
             return "discard", emergencyDiscard, None, None
-        # TODO gestire casi limite scartando la carta meno peggio
+
+    def reset(self):
+        self.players = []
+        self.fireworks = [0, 0, 0, 0, 0]
+        self.discard_pile = []
+        self.hand = []
+        self.blue_tokens = 8
+        self.red_tokens = 0
+        self.deck = []
+        self.current_player_name = ""
+        self.my_name = ""
+        self.my_position = -1
+        temp = []
+        for _ in range(0, 5):
+            self.hand.insert(0, Card())
+            self.hand[0].setAge(_)
+        for color, value in product([RED, YELLOW, GREEN, BLUE, WHITE], [1, 1, 1, 2, 2, 3, 3, 4, 4, 5]):
+            temp.append(Card())
+            carta = temp[-1]
+            carta.hint(value=value, color=color)
+            self.deck.append(carta)
+
