@@ -655,26 +655,21 @@ class Board(object):
 
     def makeMove(self):
         # TODO if len(self.deck)-len(self.hand) == 0:
-        if len(self.deck) < len(self.hand):
+
+        if len(self.deck) <= len(self.hand):
+            print("DECK IS EMPTY!")
             # YOU HAVE ONLY 1 TURN LEFT! PLAY A GOOD CARD!
             playableCard, fitness = self.findLastCardToPlay()
             if (fitness != -1 and self.red_tokens < 3) or fitness == 1:
                 # if it's not a critical situation play tge best fitness card, but if it's playable play it
+                print("PLAY THE BEST CARD!")
                 return "play", playableCard, None, None
         # play best card
         # if no secure card, play the "most playable"
         # return
+        print("Size of the deck ="+ str(len(self.deck)))
         print("knowledge about my hand: ")
         for card in self.hand:
-            print("card value: " + str(card.value))
-            print("card color: " + str(card.color))
-            print("card playable: " + str(card.getPlayable()))
-            print("card valuable: " + str(card.getValuable()))
-            print("card worthless: " + str(card.getWorthless()))
-            print("")
-        print("")
-        print("knowledge about other player hand hand: ")
-        for card in self.players[0].personal_hand:
             print("card value: " + str(card.value))
             print("card color: " + str(card.color))
             print("card playable: " + str(card.getPlayable()))
