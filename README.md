@@ -45,7 +45,8 @@ Commands for client:
 + exit: exit from the game
 + ready: set your status to ready (lobby only)
 + show: show cards
-+ hint \<type> \<destinatary>:
++ play \<num>: play the card *num* (\[0-4]]) from your hand
++ hint \<type> \<destinatary> \<cards>:
   + type: 'color' or 'value'
   + destinatary: name of the person you want to ask the hint to
 + discard \<num>: discard the card *num* (\[0-4]) from your hand
