@@ -143,6 +143,8 @@ class Board(object):
     def set_firework(self, color, value):
         if self.fireworks[color] + 1 == value:
             self.fireworks[color] = value
+            if value == 5 and self.blue_tokens<8:
+                self.blue_tokens+=1
         else:
             self.red_tokens += 1
 
@@ -224,6 +226,7 @@ class Board(object):
                 i += 1
         print(self.current_player_name)
         print("Blue tokens = " + str(self.blue_tokens))
+        print("Red tokens = " + str(self.red_tokens))
 
     def isPlayable(self, card):
         if card.getPlayable() == 1 and self.red_tokens < 2:  # when red tokens =2 enter safe mode
@@ -663,9 +666,7 @@ class Board(object):
                 color = WHITE
             if type(data) is GameData.ServerActionValid:
                 self.discards_card(data.cardHandIndex, data.card.value, color)
-                # TODO remove card from deck
             if type(data) is GameData.ServerPlayerMoveOk or type(data) is GameData.ServerPlayerThunderStrike:
-                # TODO remove card from deck
                 self.play_card(data.cardHandIndex)
                 for index in range(len(self.deck)):
                     if self.deck[index].getColor() == color and self.deck[index].getValue() == data.card.value:
@@ -685,6 +686,7 @@ class Board(object):
     def makeMove(self):
         # TODO if len(self.deck)-len(self.hand) == 0:
         print("Size of the deck =" + str(len(self.deck)))
+        print("Red tokens = "+ str(self.red_tokens))
         print("knowledge about my hand: ")
         for card in self.hand:
             print("card value: " + str(card.value))
@@ -696,11 +698,13 @@ class Board(object):
         if len(self.deck) <= len(self.hand):
             print("DECK IS EMPTY!")
             # YOU HAVE ONLY 1 TURN LEFT! PLAY A GOOD CARD!
-            playableCard, fitness = self.findLastCardToPlay()
+            playable_card, fitness = self.findLastCardToPlay()
             if (fitness != 0 and self.red_tokens < 3) or fitness == 1:
                 # if it's not a critical situation play tge best fitness card, but if it's playable play it
-                print("PLAY THE BEST CARD! "+str(playableCard))
-                return "play", playableCard, None, None
+                print("PLAY THE BEST CARD! "+str(playable_card))
+                if fitness == 1:
+                    print("I'm sure this card is playable: "+ str(playable_card))
+                return "play", playable_card, None, None
         # play best card
         # if no secure card, play the "most playable"
         # return
@@ -712,9 +716,9 @@ class Board(object):
             return "hint", self.players[self.my_position % len(self.players)].hand[val].getValue(), self.players[
                 self.my_position % len(self.players)].name, "value"
         # play best card
-        playableCard = self.findBestPlayable()
-        if playableCard != -1:
-            return "play", playableCard, None, None
+        playable_card = self.findBestPlayable()
+        if playable_card != -1:
+            return "play", playable_card, None, None
         # give hint
         # TODO implement way of choosing a different hint if the best one is misleading with a cicle
         player, index = self.findNewestPlayable()
