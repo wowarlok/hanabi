@@ -191,7 +191,7 @@ class Board(object):
         for card in self.hand:
             card.increaceAge()
         card = Card()
-        if len(self.deck) - len(self.hand) > 0:
+        if len(self.deck) - len(self.hand) >= 0:
             self.hand.append(card)
 
     def discards_card(self, id, value, color):
@@ -201,7 +201,7 @@ class Board(object):
         for card in self.hand:
             card.increaceAge()
         card = Card()
-        if len(self.deck) - len(self.hand) > 0:
+        if len(self.deck) - len(self.hand) >= 0:
             self.hand.append(card)
         card = Card()
         card.hint(value, color)
@@ -247,7 +247,7 @@ class Board(object):
         if card.getWorthless() == 1: return True
         if card.color == -1 and card.value != -1:
             cnt = 0
-            for col in range(RED, WHITE):
+            for col in range(RED, WHITE+1):
                 if card.value < self.fireworks[col]: cnt += 1
             if cnt == 5:
                 card.setWorthless(1)
@@ -541,6 +541,34 @@ class Board(object):
         cpCard.hint(value=value)
         return self.isValuable(cpCard)
 
+    def updatePlayerHand(self, player):
+        cards_left = []
+        for card in self.deck:
+            cards_left.append(card)
+        if player == None:
+            hand = self.hand
+        else:
+            hand = player.personal_hand
+            for card in player.hand:
+                cards_left.append(card)
+        for card in hand:
+            for val in DECK_COMPOSITION:
+                for color in range(RED, WHITE+1):
+                    stillIn=False
+                    for carta in cards_left:
+                        if carta.getValue()==val and carta.getColor() == color:
+                            stillIn = True
+
+                    if not stillIn:
+                        card.possible_card[val-1][color] = False
+
+
+    def updateAllHands(self):
+        self.updatePlayerHand(None)
+        for player in self.players:
+            self.updatePlayerHand(player)
+
+
     # connection to client section
     def updateBoardAfterPlay(self, data, player):  # data is show data
         for index in range(len(player.hand)):
@@ -584,6 +612,7 @@ class Board(object):
         return bestIndex, best_fitness
 
     def handleMove(self, data):  # data is status data
+
         is_me = False
         player = None
         toPlayer = None
@@ -605,7 +634,7 @@ class Board(object):
                 toPlayer = None
             if data.value in (1, 2, 3, 4, 5):
                 self.receiveValueHint(player, toPlayer, data.value, data.positions)
-
+                self.updateAllHands()
                 return
             else:
                 if data.value == "green":
@@ -619,7 +648,7 @@ class Board(object):
                 if data.value == "white":
                     color = WHITE
                 self.receiveColorHint(player, toPlayer, color, data.positions)
-
+                self.updateAllHands()
                 return
         if is_me:
             if data.card.color == "green":
@@ -646,28 +675,16 @@ class Board(object):
         else:
             if type(data) is GameData.ServerActionValid:
                 self.player_discards_card(self.current_player_name, data.cardHandIndex)
-
+                self.updateAllHands()
                 return
             if type(data) is GameData.ServerPlayerMoveOk or type(data) is GameData.ServerPlayerThunderStrike:
                 self.player_plays_card(self.current_player_name, data.cardHandIndex)
-
+                self.updateAllHands()
                 return
 
     def makeMove(self):
         # TODO if len(self.deck)-len(self.hand) == 0:
-
-        if len(self.deck) <= len(self.hand):
-            print("DECK IS EMPTY!")
-            # YOU HAVE ONLY 1 TURN LEFT! PLAY A GOOD CARD!
-            playableCard, fitness = self.findLastCardToPlay()
-            if (fitness != -1 and self.red_tokens < 3) or fitness == 1:
-                # if it's not a critical situation play tge best fitness card, but if it's playable play it
-                print("PLAY THE BEST CARD!")
-                return "play", playableCard, None, None
-        # play best card
-        # if no secure card, play the "most playable"
-        # return
-        print("Size of the deck ="+ str(len(self.deck)))
+        print("Size of the deck =" + str(len(self.deck)))
         print("knowledge about my hand: ")
         for card in self.hand:
             print("card value: " + str(card.value))
@@ -676,6 +693,17 @@ class Board(object):
             print("card valuable: " + str(card.getValuable()))
             print("card worthless: " + str(card.getWorthless()))
             print("")
+        if len(self.deck) <= len(self.hand):
+            print("DECK IS EMPTY!")
+            # YOU HAVE ONLY 1 TURN LEFT! PLAY A GOOD CARD!
+            playableCard, fitness = self.findLastCardToPlay()
+            if (fitness != 0 and self.red_tokens < 3) or fitness == 1:
+                # if it's not a critical situation play tge best fitness card, but if it's playable play it
+                print("PLAY THE BEST CARD! "+str(playableCard))
+                return "play", playableCard, None, None
+        # play best card
+        # if no secure card, play the "most playable"
+        # return
         if self.findValuableWarning(self.players[self.my_position % len(self.players)]) != -1:
             # hint them
             val = self.findBestDiscard(self.players[self.my_position % len(self.players)].personal_hand)
