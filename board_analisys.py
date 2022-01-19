@@ -19,32 +19,50 @@ DECK_COMPOSITION = [1, 1, 1, 2, 2, 3, 3, 4, 4, 5]
 
 class Card(object):
     def __init__(self):
+        # Rows indicate the value, columns indicates the color.
+        # 0-red, 1-yellow, 2-green, 3-blue, 4-white
         self.possible_card = [[True, True, True, True, True],
                               [True, True, True, True, True],
                               [True, True, True, True, True],
                               [True, True, True, True, True],
-                              [True, True, True, True, True]]  # rows from 1 (top) to 5 (bottom)
+                              [True, True, True, True, True]]
         # possible cards a card can be
         self.color = -1  # -1 = unknown
         self.value = -1  # -1 = unknown
-        self.age = 0  # expresses how old a card is, the lower the yunger
+        self.age = 0  # expresses how old a card is, the lower the younger
         self.playable = -1
         self.valuable = -1
         self.worthless = -1
 
     def hint(self, value=-1, color=-1):
+        """
+                   Updates the possible value/color of the card, based on a received hint.
+
+                   Parameters:
+                       value: the value of the card received. It can be 1, 2, 3, 4, 5 or -1 when no value hint is received on this card.
+                       color: the color of the card received. It can be It can be 0 (red), 1 (yellow), 2 (green), 3 (blue), 4 (white) or -1 when no color hint is received on this card
+               """
+
+        # Cycle through all possible combinations of colors and values
         for val in range(0, 5):
             for col in range(RED, WHITE + 1):
-                if value != -1:
+                if value != -1:  # if a value hint is given, then assign to this card that value and other possible values become false.
                     self.value = value
                     if val != value - 1:
                         self.possible_card[val][col] = False
-                if color != -1:
+                if color != -1:  # if a color hint is given, then assign to this card that color and other possible colors become false.
                     self.color = color
                     if col != color:
                         self.possible_card[val][col] = False
 
     def negative_hint(self, value=-1, color=-1):
+        """
+                    Updates the possible value of a card that was not target by a hint, so that we can know by exclusion what a cards is.
+
+                    Parameters:
+                        value: the value of the card received. It can be 1, 2, 3, 4, 5 or -1 when no value hint is received on this card.
+                        color: the color of the card received. It can be It can be 0 (red), 1 (yellow), 2 (green), 3 (blue), 4 (white) or -1 when no color hint is received on this card
+                """
         # removes color and values from cards that did not receive a certain hint
         for val in range(0, 5):
             for col in range(RED, WHITE + 1):
@@ -97,7 +115,7 @@ class Player(object):
 
     def __init__(self, name=""):
         self.hand = []
-        self.personal_hand = []
+        self.personal_hand = []  # What the player knows of his hand
         self.name = name
 
     def remove_card(self, position):
@@ -115,11 +133,10 @@ class Player(object):
 
 
 class Board(object):
-    # TODO insert a way to keep track of previous status like what are the last moves each player made
     # maybe implement an ordered list of boards and each time a move is made add the new board to the list
     # considering the last one as the current live one?
     players = []
-    fireworks = [0, 0, 0, 0, 0]
+    fireworks = [0, 0, 0, 0, 0]  # Contains the highest card on the board for each color (r, y, g, b, w)
     discard_pile = []
     hand = []
     blue_tokens = 8
@@ -141,14 +158,27 @@ class Board(object):
             self.deck.append(carta)
 
     def set_firework(self, color, value):
+        """
+                    Places a card with a given color - value on the board
+
+                    Parameters:
+                        color: the color of the placed card. It can be 0 (red), 1 (yellow), 2 (green), 3 (blue), 4 (white).
+                        value: the value of the placed card. It can be 1, 2, 3, 4, 5.
+                """
         if self.fireworks[color] + 1 == value:
             self.fireworks[color] = value
-            if value == 5 and self.blue_tokens<8:
-                self.blue_tokens+=1
-        else:
+            if value == 5 and self.blue_tokens < 8:  # Add a blue token in case a 5 is placed
+                self.blue_tokens += 1
+        else:  # If card cannot be placed
             self.red_tokens += 1
 
     def add_player(self, name):
+        """
+                  Adds a new player to the game
+
+                  Parameters:
+                       name: name of the player
+               """
         if name == self.my_name:
             self.my_position = len(self.players)
             return
@@ -159,6 +189,14 @@ class Board(object):
             # if there a re 4 or more players, hands are composed of only 4 cards
 
     def give_card_to_player(self, name, value, color):
+        """
+                    Associates a card to a given player.
+
+                    Parameters:
+                        name: name of the player that receives the card
+                        value: the value of the card received. It can be 1, 2, 3, 4, 5.
+                        color: the color of the placed card. It can be 0 (red), 1 (yellow), 2 (green), 3 (blue), 4 (white).
+                """
         for player in self.players:
             if player.name == name:
                 break
@@ -171,6 +209,13 @@ class Board(object):
                 break
 
     def player_plays_card(self, name, id):
+        """
+                    Places the card of a player with a given name, with position at id, on the board.
+
+                    Parameters:
+                        name: name of the player whose card is going to be played
+                        id: index of the card in the hand of the player. It can be 0, 1, 2, 3, 4.
+                """
         for player in self.players:
             if player.name == name:
                 break
@@ -180,6 +225,13 @@ class Board(object):
         player.remove_card(id)
 
     def player_discards_card(self, name, id):
+        """
+                   Discards the card of a player with a given name.
+
+                   Parameters:
+                       name: name of the player whose card is going to be discarded
+                       id: index of the card in the hand of the player. It can be 0, 1, 2, 3, 4.
+               """
         for player in self.players:
             if player.name == name:
                 break
@@ -189,6 +241,12 @@ class Board(object):
             self.blue_tokens += 1
 
     def play_card(self, id):
+        """
+                    Play a card of the IA player, with a given id.
+
+                    Parameters:
+                        id: index of the card in the hand of the IA.
+                """
         del self.hand[id]
         for card in self.hand:
             card.increaceAge()
@@ -214,6 +272,9 @@ class Board(object):
                 break
 
     def print_board(self):
+        """
+                    Prints the state of the game.
+        """
         for player in self.players:
             print(player.name)
             i = 0
@@ -229,10 +290,17 @@ class Board(object):
         print("Red tokens = " + str(self.red_tokens))
 
     def isPlayable(self, card):
+        """
+                    Returns a mark that states how "playable" a card is. The more a card is playable, the safer is to play it. If 1, it can be safely played.
+
+                    Parameters:
+                        card: the card that needs to be evaluated
+        """
         if card.getPlayable() == 1 and self.red_tokens < 2:  # when red tokens =2 enter safe mode
             return 1
         total_count = 0
         playable_count = 0
+        # Evaluates how many cards are still in game that can be played, and return a probability value of having a playable one
         for col in range(RED, WHITE + 1):
             for val in range(0, 5):
                 if not card.possible_card[val][col]: continue
@@ -245,13 +313,23 @@ class Board(object):
     # a probability of playability. if 0 card will never be usefull
 
     def isWorthless(self, card):
+        """
+                    Returns True if a card is "worthless" a card is. A card is worthless whenever:
+                    - It has already been placed
+                    - Its value is too small and it cannot be played.
+                    - It belongs to a color already completed
+                    - All smaller cards are already have been discarded, so this cannot be placed anymore
+
+                    Parameters:
+                        card: the card that has to be evaluated
+        """
         # a card is worthless when it can't be played
         # whether cos it's too small or all other smaller cards of it's color have been discarded
         if card.getWorthless() == 1: return True
         if card.color == -1 and card.value != -1:
             cnt = 0
-            for col in range(RED, WHITE+1):
-                if card.value < self.fireworks[col]: cnt += 1
+            for col in range(RED, WHITE + 1):
+                if card.value <= self.fireworks[col]: cnt += 1
             if cnt == 5:
                 card.setWorthless(1)
                 return True  # card is too small to be played on any firework
@@ -273,6 +351,13 @@ class Board(object):
         return False
 
     def cardsRemainingOutsideDiscard(self, value, color):
+        """
+                    See how many cards of a given color/value are still not discarded
+
+                    Parameters:
+                        - value: the value of the card to check
+                        - color: the color of the card to check
+        """
         count = 2
         cnt = 0
         if value == 1: count += 1
@@ -289,6 +374,12 @@ class Board(object):
         return cnt
 
     def worthlessProbability(self, card):
+        """
+                    Returns the probability of a given card of being a "worthless" card.
+
+                    Parameters:
+                        card: the card whose "worthless probability" will be evaluated
+        """
         total_count = 0
         playable_count = 0
         for col in range(RED, WHITE + 1):
@@ -304,6 +395,16 @@ class Board(object):
     # a probability of playability. if 0 card will never be usefull
 
     def isValuable(self, card):
+        """
+                    Returns a score based on how "valuable" a card is. A card is valuable if:
+                    - It is still available
+                    - It can be played
+                    - It's not worthless
+                    It's 1 if valuable, 0 if not valuable (worthless), 0.5 if not valuable nor worthless
+
+                    Parameters:
+                        card: the card that has to be evaluated
+        """
         if card.getValuable() == 1: return 1
         if card.getValuable() == 0: return 0
         if card.value != -1 and card.color != -1:
@@ -319,7 +420,13 @@ class Board(object):
         return 0.5
 
     def findNewestPlayable(self):
-        # finds the newest playable card, if tied chooses the one with the smallest value
+        """
+                    Returns the newest card playable. If these characteristics are equal, the one with the lower value is chosen.
+                    The function prefers the next player as the target of the hint
+
+                    Returns:
+                        A 2-tuple containing name of the player having the best card found and the index of that card.
+        """
         best_card = None
         best_player = None
         best_index = None
@@ -349,7 +456,18 @@ class Board(object):
         return best_player, best_index
 
     def findBestHint(self, player, index):
-        # retun value: 1 for color, -1 for value, 0 for none
+        """
+                    Finds the most intelligent way to suggest a card with a given index to a given player.
+
+                    Parameters:
+                        player: the name of the player
+                        index: the index of the card
+
+                    Returns:
+                        "value" if a color hint should be given
+                        "color if a value hint should be given
+        """
+
         if player.personal_hand[index].getColor() != -1:
             return "value"
         if player.personal_hand[index].getValue() != -1:
@@ -445,8 +563,16 @@ class Board(object):
         return -1
 
     def receiveColorHint(self, fromPlayer, toPlayer, color, indexes):
+        """
+                   Used whenever a hint on a value is given to a player
+
+                   Parameters:
+                       fromPlayer: name of the player who gives the hint
+                       toPlayer: name of the player who receives the hint (None if the player is the AI itself)
+                       color: color of the hinted card. It can be 0 (red), 1 (yellow), 2 (green), 3 (blue), 4 (white)
+                       indexes: indexes with the value of the hinted cards
+        """
         # when receiving a color hint, if no card is found to be obviusly playable after the hint then the newst card is playable
-        # TODO make the warning detection using players order
         if toPlayer == None:
             hand = self.hand
         else:
@@ -479,20 +605,22 @@ class Board(object):
             print("index identified as playable= " + str(foundIndex))
             hand[foundIndex].playable = 1
 
-        # TODO if the player wasn't the one who's supposed to give hind set the next discardable card valuable to false
-        # as no valuable hint was given
-        # not needed |
-        #           v
-        # if toPlayer == none: self.hand = hand
-        # else:  toPlayer.personal_hand = hand
-
     def receiveValueHint(self, fromPlayer, toPlayer, value, indexes):
+        """
+                    Used whenever a hint on a value is given to a player
+
+                    Parameters:
+                        fromPlayer: name of the player who gives the hint
+                        toPlayer: name of the player who receives the hint (None if the player is the AI itself)
+                        value: value of the hinted cards
+                        indexes: indexes with the value of the hinted cards
+        """
         warning_partner = False
-        if toPlayer == None:
+        if toPlayer == None:  # Case hint receiver is our AI
             hand = self.hand
             for index in range(len(self.players)):
                 if self.players[index].name == fromPlayer.name:
-                    if index == (self.my_position + len(self.players)- 1) % len(self.players):
+                    if index == (self.my_position + len(self.players) - 1) % len(self.players):
                         warning_partner = True
         else:
             hand = toPlayer.personal_hand
@@ -556,21 +684,19 @@ class Board(object):
                 cards_left.append(card)
         for card in hand:
             for val in DECK_COMPOSITION:
-                for color in range(RED, WHITE+1):
-                    stillIn=False
+                for color in range(RED, WHITE + 1):
+                    stillIn = False
                     for carta in cards_left:
-                        if carta.getValue()==val and carta.getColor() == color:
+                        if carta.getValue() == val and carta.getColor() == color:
                             stillIn = True
 
                     if not stillIn:
-                        card.possible_card[val-1][color] = False
-
+                        card.possible_card[val - 1][color] = False
 
     def updateAllHands(self):
         self.updatePlayerHand(None)
         for player in self.players:
             self.updatePlayerHand(player)
-
 
     # connection to client section
     def updateBoardAfterPlay(self, data, player):  # data is show data
@@ -614,7 +740,13 @@ class Board(object):
                     bestIndex = index
         return bestIndex, best_fitness
 
-    def handleMove(self, data):  # data is status data
+    def handleMove(self, data):
+        """
+                    Manages data incoming from the server
+                    Parameters:
+                        data: status data received from the server
+        """
+        # Understanding if move is directed towards another player, or the agent itself
 
         is_me = False
         player = None
@@ -685,15 +817,15 @@ class Board(object):
 
     def makeMove(self):
         print("Size of the deck =" + str(len(self.deck)))
-        print("Red tokens = "+ str(self.red_tokens))
+        print("Red tokens = " + str(self.red_tokens))
         print("knowledge about my hand: ")
         for card in self.hand:
             print("card value: " + str(card.value))
             print("card color: " + str(card.color))
-            for val in range (0,5):
-                for color in range (RED, WHITE+1):
+            for val in range(0, 5):
+                for color in range(RED, WHITE + 1):
                     if card.possible_card[val][color]:
-                        print("Possible value = "+ str(val)+ "\nPossible color = "+ str(color))
+                        print("Possible value = " + str(val) + "\nPossible color = " + str(color))
             print("card playable: " + str(card.getPlayable()))
             print("card valuable: " + str(card.getValuable()))
             print("card worthless: " + str(card.getWorthless()))
@@ -704,9 +836,9 @@ class Board(object):
             playable_card, fitness = self.findLastCardToPlay()
             if (fitness != 0 and self.red_tokens < 2) or fitness == 1:
                 # if it's not a critical situation play tge best fitness card, but if it's playable play it
-                print("PLAY THE BEST CARD! "+str(playable_card))
+                print("PLAY THE BEST CARD! " + str(playable_card))
                 if fitness == 1:
-                    print("I'm sure this card is playable: "+ str(playable_card))
+                    print("I'm sure this card is playable: " + str(playable_card))
                 return "play", playable_card, None, None
         # play best card
         # if no secure card, play the "most playable"
@@ -730,15 +862,17 @@ class Board(object):
         else:
             type = ""
         if self.blue_tokens > 0:
-            if type == "color":
-                # give hint
-                print("hint " + str(player.hand[index].getColor()) + " " + player.name + " color")
-                return "hint", player.hand[index].getColor(), player.name, "color"
-            else:
-                if type == "value":
+            if not (len(self.players) >= 2 and self.blue_tokens == 1 and self.findValuableWarning(
+                    self.players[((self.my_position + 1) % len(self.players))]) != -1):
+                if type == "color":
                     # give hint
-                    print("hint " + str(player.hand[index].getValue()) + " " + player.name + " value")
-                    return "hint", player.hand[index].getValue(), player.name, "value"
+                    print("hint " + str(player.hand[index].getColor()) + " " + player.name + " color")
+                    return "hint", player.hand[index].getColor(), player.name, "color"
+                else:
+                    if type == "value":
+                        # give hint
+                        print("hint " + str(player.hand[index].getValue()) + " " + player.name + " value")
+                        return "hint", player.hand[index].getValue(), player.name, "value"
         if self.blue_tokens < 8:
             val = self.findBestDiscard(self.hand)
             if val != -1:
