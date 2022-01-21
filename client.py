@@ -32,7 +32,7 @@ else:
 games = 0
 tot_points = 0
 run = True
-ai = False  # set to false to visualize the "show" command
+prevent_print = False  # set to True to prevent visualization of the "show" command
 statuses = ["Lobby", "Game", "GameHint"]
 
 status = statuses[0]
@@ -142,10 +142,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.send(GameData.ClientGetGameStateRequest(playerName).serialize())
         if type(data) is GameData.ServerGameStateData:
             dataOk = True
-            if not ai:
+            if not prevent_print:
                 print("Current player: " + data.currentPlayer)
 
-            if not ai:
+            if not prevent_print:
                 print("Player hands: ")
             for p in data.players:
                 if not board_setup:
@@ -176,25 +176,26 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                         if card.color == "white":
                             color = WHITE
                         board.give_card_to_player(p.name, card.value, color)
-                if not ai:
+                if not prevent_print:
                     print(p)
                     print(p.toClientString())
-            if not ai:
+            if not prevent_print:
+                print("Cards in your hand: " + str(data.handSize))
                 print("Table cards: ")
             for pos in data.tableCards:
-                if not ai:
+                if not prevent_print:
                     print(pos + ": [ ")
                 for c in data.tableCards[pos]:
-                    if not ai:
+                    if not prevent_print:
                         print(c.toClientString() + " ")
-                if not ai:
+                if not prevent_print:
                     print("]")
-            if not ai:
+            if not prevent_print:
                 print("Discard pile: ")
             for c in data.discardPile:
-                if not ai:
+                if not prevent_print:
                     print("\t" + c.toClientString())
-            if not ai:
+            if not prevent_print:
                 print("Note tokens used: " + str(data.usedNoteTokens) + "/8")
                 print("Storm tokens used: " + str(data.usedStormTokens) + "/3")
 
@@ -270,7 +271,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
             print("Total points = "+ str(tot_points))
             print("Average points = "+(str(tot_points/games)))
-            if games <20:
+            if games <100:
                 if data.score!=0:
                     # TODO remove after testing safe mode on last card
                     s.send(GameData.ClientGetGameStateRequest(playerName).serialize())

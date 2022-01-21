@@ -252,6 +252,7 @@ class Board(object):
             card.increaceAge()
         card = Card()
         if len(self.deck) - len(self.hand) >= 0:
+            # if the deck isn't empty
             self.hand.append(card)
 
     def discards_card(self, id, value, color):
@@ -432,6 +433,7 @@ class Board(object):
         best_index = None
         for playerIndex in range(len(self.players)):
             player = self.players[(playerIndex + self.my_position) % len(self.players)]
+            # start from the player next to us
             for index in range(len(player.hand)):
                 if self.isPlayable(player.hand[index]) == 1:
                     if best_card == None or player.hand[index].getAge() < best_card.getAge() or (
@@ -590,7 +592,6 @@ class Board(object):
                         if not foundPlayableCard:
                             # the newest card found playable is considered playable, the others might be the same or not playable in the future
                             hand[index].setPlayable(1)
-                            print("set card playable: " + str(index))
                         foundPlayableCard = True
                     else:
                         if self.isPlayable(hand[index]) > 0:
@@ -599,10 +600,8 @@ class Board(object):
                                 foundIndex = index
             else:
                 hand[index].negative_hint(color=color)
-        print("index identified = " + str(foundIndex))
         if not foundPlayableCard and foundIndex != -1:
             # if no card was found as obvious hint the newest card is set as playable
-            print("index identified as playable= " + str(foundIndex))
             hand[foundIndex].playable = 1
 
     def receiveValueHint(self, fromPlayer, toPlayer, value, indexes):
@@ -650,7 +649,6 @@ class Board(object):
                         # we found a card that is now playable, the hint must have been about this card
                         if not foundPlayableCard:
                             hand[index].setPlayable(1)
-                            print("set card playable: " + str(index))
                         foundPlayableCard = True
 
                     else:
@@ -660,10 +658,8 @@ class Board(object):
                                 foundIndex = index
             else:
                 hand[index].negative_hint(value=value)
-        print("index identified = " + str(foundIndex))
         if not warning and not foundPlayableCard and foundIndex != -1:
             # if it wasn't a warning and no card was identified as obvious playable then the newes one is playable
-            print("index identified as playable= " + str(foundIndex))
             hand[foundIndex].setPlayable(1)
 
     def couldBeValuableWithVal(self, tCard, value):
@@ -703,7 +699,6 @@ class Board(object):
         for index in range(len(player.hand)):
             old = player.hand[index]
             new = data.cards[index]
-            # TODO convertire in actual data depending os client-server payload format
             if old.color != new.color or old.value != new.value:
                 self.player_plays_card(player.name, index)
         player.give_card_last(data.cards[len(data.cards) - 1])
@@ -712,7 +707,6 @@ class Board(object):
         for index in range(len(player.hand)):
             old = player.hand[index]
             new = data.cards[index]
-            # TODO convertire in actual data depending os client-server payload format
             if old.color != new.color or old.value != new.value:
                 self.player_discards_card(player.name, index)
         player.give_card_last(data.cards[len(data.cards) - 1])
@@ -743,6 +737,7 @@ class Board(object):
     def handleMove(self, data):
         """
                     Manages data incoming from the server
+
                     Parameters:
                         data: status data received from the server
         """
@@ -816,29 +811,11 @@ class Board(object):
                 return
 
     def makeMove(self):
-        print("Size of the deck =" + str(len(self.deck)))
-        print("Red tokens = " + str(self.red_tokens))
-        print("knowledge about my hand: ")
-        for card in self.hand:
-            print("card value: " + str(card.value))
-            print("card color: " + str(card.color))
-            for val in range(0, 5):
-                for color in range(RED, WHITE + 1):
-                    if card.possible_card[val][color]:
-                        print("Possible value = " + str(val) + "\nPossible color = " + str(color))
-            print("card playable: " + str(card.getPlayable()))
-            print("card valuable: " + str(card.getValuable()))
-            print("card worthless: " + str(card.getWorthless()))
-            print("")
         if len(self.deck) <= len(self.hand):
-            print("DECK IS EMPTY!")
             # YOU HAVE ONLY 1 TURN LEFT! PLAY A GOOD CARD!
             playable_card, fitness = self.findLastCardToPlay()
             if (fitness != 0 and self.red_tokens < 2) or fitness == 1:
                 # if it's not a critical situation play tge best fitness card, but if it's playable play it
-                print("PLAY THE BEST CARD! " + str(playable_card))
-                if fitness == 1:
-                    print("I'm sure this card is playable: " + str(playable_card))
                 return "play", playable_card, None, None
         # play best card
         # if no secure card, play the "most playable"
@@ -846,8 +823,6 @@ class Board(object):
         if self.findValuableWarning(self.players[self.my_position % len(self.players)]) != -1:
             # hint them
             val = self.findBestDiscard(self.players[self.my_position % len(self.players)].personal_hand)
-            print("hint " + str(self.players[self.my_position % len(self.players)].hand[val].getValue()) + " " +
-                  self.players[0].name + " value WARNING")
             return "hint", self.players[self.my_position % len(self.players)].hand[val].getValue(), self.players[
                 self.my_position % len(self.players)].name, "value"
         # play best card
@@ -855,7 +830,6 @@ class Board(object):
         if playable_card != -1:
             return "play", playable_card, None, None
         # give hint
-        # TODO implement way of choosing a different hint if the best one is misleading with a cicle
         player, index = self.findNewestPlayable()
         if player != None and index != None:
             type = self.findBestHint(player, index)
@@ -866,12 +840,10 @@ class Board(object):
                     self.players[((self.my_position + 1) % len(self.players))]) != -1):
                 if type == "color":
                     # give hint
-                    print("hint " + str(player.hand[index].getColor()) + " " + player.name + " color")
                     return "hint", player.hand[index].getColor(), player.name, "color"
                 else:
                     if type == "value":
                         # give hint
-                        print("hint " + str(player.hand[index].getValue()) + " " + player.name + " value")
                         return "hint", player.hand[index].getValue(), player.name, "value"
         if self.blue_tokens < 8:
             val = self.findBestDiscard(self.hand)
@@ -880,9 +852,6 @@ class Board(object):
                 return "discard", val, None, None
         # ipotetico caso limite da gestire
         if self.blue_tokens > 0:
-            print("hint " + str(self.players[self.my_position % len(self.players)].hand[0].getValue()) + " " +
-                  self.players[
-                      0].name + " value LAST CHANCE")
             return "hint", self.players[self.my_position % len(self.players)].hand[0].getValue(), self.players[
                 self.my_position % len(self.players)].name, "value"
         else:

@@ -1,6 +1,22 @@
 # Computational Intelligence 2021-2022
 
-Exam of computational intelligence 2021 - 2022. It requires teaching the client to play the game of Hanabi (rules can be found [here](https://www.spillehulen.dk/media/102616/hanabi-card-game-rules.pdf)).
+Submission for the exam of computational intelligence 2021 - 2022. 
+It requires teaching the client to play the game of Hanabi (rules can be found [here](https://www.spillehulen.dk/media/102616/hanabi-card-game-rules.pdf)).
+
+The agent is a knowledge-based agent developed using advanced Hanabi strategies.
+
+
+### How to use
+
+1) Copy and paste the client in the folder after cloning the project.
+2) Change the player name of the new client to a different one.
+3) Repeat steps 1 and 2 until you have the desired number of players.
+4) Launch the server and the clients and start the game.
+5) Have fun looking at the AI playing the game.
+### Inspirations
+Hanabi advanced strategy guide: https://boardgamegeek.com/thread/804762/elusive-25-point-game-tips-effective-hanabi-play
+
+Most comments and documentation courtesy of Marco Riggio
 
 ## Server
 
