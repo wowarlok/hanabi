@@ -271,10 +271,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
             print("Total points = "+ str(tot_points))
             print("Average points = "+(str(tot_points/games)))
-            if games <100:
-                if data.score!=0:
-                    # TODO remove after testing safe mode on last card
-                    s.send(GameData.ClientGetGameStateRequest(playerName).serialize())
+            s.send(GameData.ClientGetGameStateRequest(playerName).serialize())
         if not dataOk:
             print("Unknown or unimplemented data type: " + str(type(data)))
         print("[" + playerName + " - " + status + "]: ", end="")
